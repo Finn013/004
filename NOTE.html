@@ -361,7 +361,29 @@
   </div>
 
   <script>
-    // Система вкладок
+let deferredPrompt;
+const installBtn = document.getElementById('installBtn');
+
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    installBtn.classList.remove('hidden');
+});
+
+installBtn.addEventListener('click', () => {
+    if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then(choice => {
+            if (choice.outcome === 'accepted') {
+                console.log('PWA установлена');
+            }
+            deferredPrompt = null;
+            installBtn.classList.add('hidden');
+        });
+    }
+});
+    
+// Система вкладок
     let notes = JSON.parse(localStorage.getItem('notes')) || [];
     let currentNoteId = null;
     let isResizing = false;
@@ -626,27 +648,6 @@
       initTabs();
       setInterval(autoSave, 5000);
     });
-let deferredPrompt;
-const installBtn = document.getElementById('installBtn');
-
-window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    installBtn.classList.remove('hidden');
-});
-
-installBtn.addEventListener('click', () => {
-    if (deferredPrompt) {
-        deferredPrompt.prompt();
-        deferredPrompt.userChoice.then(choice => {
-            if (choice.outcome === 'accepted') {
-                console.log('PWA установлена');
-            }
-            deferredPrompt = null;
-            installBtn.classList.add('hidden');
-        });
-    }
-});
   </script>
 </body>
 </html>
