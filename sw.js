@@ -1,8 +1,7 @@
 const CACHE_NAME = 'text-editor-v1';
 const ASSETS_TO_CACHE = [
   '/',
-  '/index.html',
-  '/styles.css',
+  '/NOTE.html',
   '/app.js',
   '/icons/icon-192x192.png',
   '/icons/icon-512x512.png',
