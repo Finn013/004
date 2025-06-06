@@ -1,64 +1,20 @@
-const CACHE_NAME = 'text-editor-v1';
-const ASSETS_TO_CACHE = [
-  '/',
-  '/NOTE.html',
-  '/icons/icon-192x192.png',
-  '/icons/icon-512x512.png',
-  '/manifest.json'
+const CACHE_NAME = 'editor-v1';
+const ASSETS = [
+  './NOTE.html',
+  './icon-192.png',
+  './icon-512.png'
 ];
 
-// Install event
-self.addEventListener('install', (event) => {
-  event.waitUntil(
+self.addEventListener('install', e => {
+  e.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => {
-        return cache.addAll(ASSETS_TO_CACHE);
-      })
+      .then(cache => cache.addAll(ASSETS))
   );
 });
 
-// Activate event
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cache) => {
-          if (cache !== CACHE_NAME) {
-            return caches.delete(cache);
-          }
-        })
-      );
-    })
+self.addEventListener('fetch', e => {
+  e.respondWith(
+    caches.match(e.request)
+      .then(response => response || fetch(e.request))
   );
-});
-
-// Fetch event
-self.addEventListener('fetch', (event) => {
-  if (!navigator.onLine) {
-    event.respondWith(
-      caches.match(event.request)
-        .then((response) => {
-          return response || fetch(event.request);
-        })
-    );
-  } else {
-    // For online-first approach
-    event.respondWith(
-      fetch(event.request)
-        .then((response) => {
-          // Clone the response
-          const responseToCache = response.clone();
-          
-          caches.open(CACHE_NAME)
-            .then((cache) => {
-              cache.put(event.request, responseToCache);
-            });
-            
-          return response;
-        })
-        .catch(() => {
-          return caches.match(event.request);
-        })
-    );
-  }
 });
