@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<!-- PWA Meta Tags -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Текстовый редактор">
+<link rel="apple-touch-icon" href="icons/icon-192x192.png">
+
+<!-- Manifest -->
+<link rel="manifest" href="manifest.json">
+
+<!-- Theme Color -->
+<meta name="theme-color" content="#3b82f6">  
+<meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Текстовый редактор</title>
+  <style>
+    /* Общие стили */
+    html, body { 
+      margin: 0; 
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+      font-family: system-ui, -apple-system, sans-serif;
+      background-color: #f0f0f0;
+    }
+    
+    body { 
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Стили вкладок */
+    .tabs-container {
+      background: #d1d5db;
+      padding: 0 1rem;
+      border-bottom: 1px solid #9ca3af;
+      position: relative;
+      z-index: 100;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 0;
+      overflow-x: auto;
+    }
+
+    .tab {
+      position: relative;
+      padding: 0.75rem 2rem 0.75rem 1.5rem;
+      background: #9ca3af;
+      border: 1px solid #6b7280;
+      border-bottom: none;
+      cursor: pointer;
+      font-size: 0.875rem;
+      clip-path: polygon(0 0, calc(100% - 15px) 0, 100% 100%, 0 100%);
+      margin-right: -12px;
+      min-width: 120px;
+      white-space: nowrap;
+      transition: all 0.2s;
+      color: white;
+    }
+
+    .tab.active {
+      background: white;
+      color: #1f2937;
+      z-index: 1;
+      border-bottom: 1px solid white;
+    }
+
+    .tab:hover:not(.active) {
+      background: #6b7280;
+    }
+
+    .tab-close {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .tab-close:hover {
+      background: #d1d5db;
+    }
+
+    /* Шапка и лента */
+    .header {
+      background-color: white;
+      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+      flex-shrink: 0;
+    }
+
+    .header-content {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 0 1rem;
+    }
+
+    .ribbon {
+      display: flex;
+      gap: 0.25rem;
+      border-top: 1px solid #e5e7eb;
+      border-bottom: 1px solid #e5e7eb;
+      padding: 0.5rem 0;
+    }
+
+    .ribbon-button {
+      padding: 0.5rem 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.875rem;
+      border-radius: 0.25rem;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: white;
+      font-weight: 500;
+    }
+
+    .ribbon-menu {
+      position: absolute;
+      background-color: white;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      border-radius: 0.5rem;
+      padding: 0.5rem;
+      min-width: 200px;
+      z-index: 50;
+      display: none;
+    }
+
+    .ribbon-menu.show {
+      display: block;
+    }
+
+    .menu-item {
+      padding: 0.5rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      width: 100%;
+      text-align: left;
+      font-size: 0.875rem;
+      border-radius: 0.25rem;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #374151;
+    }
+
+    .menu-item:hover { 
+      background-color: #f3f4f6; 
+    }
+
+    /* Редактор */
+    .editor-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background-color: #f3f4f6;
+    }
+
+    .editor-wrapper {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 1rem;
+      width: 100%;
+    }
+
+    .editor-content {
+      flex: 1;
+      background-color: white;
+      border-radius: 0.5rem;
+      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+      display: flex;
+      flex-direction: column;
+    }
+
+    #editor {
+      flex: 1;
+      padding: 1rem;
+      overflow-y: auto;
+      cursor: text;
+      background: white;
+      outline: none;
+    }
+
+    /* Таблицы */
+    table { 
+      border-collapse: collapse; 
+      margin: 1rem 0; 
+      width: 100%;
+      position: relative;
+      border: 1px solid #d1d5db;
+    }
+    
+    .resize-handle {
+      position: absolute;
+      right: -5px;
+      bottom: -5px;
+      width: 10px;
+      height: 10px;
+      background: #4f46e5;
+      cursor: se-resize;
+      border-radius: 50%;
+      z-index: 1;
+    }
+
+    td, th { 
+      border: 1px solid #d1d5db; 
+      padding: 0.5rem; 
+      position: relative;
+      min-width: 2rem;
+      min-height: 1.5rem;
+    }
+
+    /* Цвета кнопок */
+    .btn-tabs { background-color: #6b7280; }
+    .btn-open { background-color: #3b82f6; }
+    .btn-text { background-color: #10b981; }
+    .btn-table { background-color: #8b5cf6; }
+    .btn-link { background-color: #f59e0b; }
+    .btn-insert { background-color: #ef4444; }
+    .btn-save { background-color: #6366f1; }
+    .btn-clear { background-color: #dc2626; }
+
+    .btn-tabs:hover { background-color: #4b5563; }
+    .btn-open:hover { background-color: #2563eb; }
+    .btn-text:hover { background-color: #059669; }
+    .btn-table:hover { background-color: #7c3aed; }
+    .btn-link:hover { background-color: #d97706; }
+    .btn-insert:hover { background-color: #dc2626; }
+    .btn-save:hover { background-color: #4f46e5; }
+    .btn-clear:hover { background-color: #b91c1c; }
+  </style>
+</head>
+<body>
+  <!-- Вкладки -->
+  <div class="tabs-container">
+    <div class="tabs" id="tabs"></div>
+  </div>
+
+  <!-- Шапка -->
+  <div class="header">
+    <div class="header-content">
+      <h1 style="font-size: 1.5rem; font-weight: bold; padding: 1rem 0;">Текстовый редактор</h1>
+      
+      <!-- Лента -->
+      <div class="ribbon">
+        <!-- Управление вкладками -->
+        <div class="ribbon-item">
+          <button class="ribbon-button btn-tabs" onclick="toggleMenu('tabs-menu')">Вкладки</button>
+          <div class="ribbon-menu" id="tabs-menu">
+            <button onclick="newNote()" class="menu-item">Новая вкладка</button>
+            <button onclick="renameCurrentTab()" class="menu-item">Переименовать</button>
+            <button onclick="deleteCurrentTab()" class="menu-item">Удалить</button>
+          </div>
+        </div>
+
+        <!-- Открыть -->
+        <div class="ribbon-item">
+          <button class="ribbon-button btn-open" onclick="toggleMenu('open-menu')">Открыть</button>
+          <div class="ribbon-menu" id="open-menu">
+            <input type="file" id="fileInput" style="display: none" accept=".txt,.html,.doc,.docx,.pdf"/>
+            <button onclick="document.getElementById('fileInput').click()" class="menu-item">
+              Открыть файл
+            </button>
+          </div>
+        </div>
+
+        <!-- Текст -->
+        <div class="ribbon-item">
+          <button class="ribbon-button btn-text" onclick="toggleMenu('text-menu')">Текст</button>
+          <div class="ribbon-menu" id="text-menu">
+            <select id="fontSize" onchange="formatText('fontSize', this.value)" class="menu-item">
+              <option value="3">Маленький</option>
+              <option value="4" selected>Обычный</option>
+              <option value="5">Большой</option>
+              <option value="6">Очень большой</option>
+            </select>
+            <button onclick="formatText('bold')" class="menu-item">Жирный</button>
+            <button onclick="formatText('italic')" class="menu-item">Курсив</button>
+            <button onclick="formatText('underline')" class="menu-item">Подчёркнутый</button>
+            <button onclick="formatText('strikeThrough')" class="menu-item">Зачёркнутый</button>
+            <div class="menu-item">
+              <span>Цвет текста</span>
+              <input type="color" onchange="formatText('foreColor', this.value)" style="width: 24px; height: 24px;"/>
+            </div>
+            <button onclick="formatText('justifyLeft')" class="menu-item">По левому краю</button>
+            <button onclick="formatText('justifyCenter')" class="menu-item">По центру</button>
+            <button onclick="formatText('justifyRight')" class="menu-item">По правому краю</button>
+            <button onclick="formatText('justifyFull')" class="menu-item">По ширине</button>
+            <button onclick="formatText('insertOrderedList')" class="menu-item">Нумерованный список</button>
+            <button onclick="formatText('insertUnorderedList')" class="menu-item">Маркированный список</button>
+          </div>
+        </div>
+
+        <!-- Таблицы -->
+        <div class="ribbon-item">
+          <button class="ribbon-button btn-table" onclick="toggleMenu('table-menu')">Таблицы</button>
+          <div class="ribbon-menu" id="table-menu">
+            <button onclick="insertTable()" class="menu-item">Добавить таблицу</button>
+            <button onclick="tableAction('addRow')" class="menu-item">Добавить строку</button>
+            <button onclick="tableAction('addColumn')" class="menu-item">Добавить столбец</button>
+            <button onclick="tableAction('deleteRow')" class="menu-item">Удалить строку</button>
+            <button onclick="tableAction('deleteColumn')" class="menu-item">Удалить столбец</button>
+            <button onclick="mergeCells()" class="menu-item">Объединить ячейки</button>
+          </div>
+        </div>
+
+        <!-- Ссылки -->
+        <div class="ribbon-item">
+          <button class="ribbon-button btn-link" onclick="toggleMenu('link-menu')">Ссылки</button>
+          <div class="ribbon-menu" id="link-menu">
+            <button onclick="insertLink()" class="menu-item">Добавить ссылку</button>
+            <button onclick="editLink()" class="menu-item">Редактировать ссылку</button>
+            <button onclick="removeLink()" class="menu-item">Удалить ссылку</button>
+          </div>
+        </div>
+
+        <!-- Вставить -->
+        <div class="ribbon-item">
+          <button class="ribbon-button btn-insert" onclick="toggleMenu('insert-menu')">Вставить</button>
+          <div class="ribbon-menu" id="insert-menu">
+            <input type="file" id="imageInput" accept="image/*" style="display: none"/>
+            <button onclick="document.getElementById('imageInput').click()" class="menu-item">Изображение</button>
+            <input type="file" id="videoInput" accept="video/*" style="display: none"/>
+            <button onclick="document.getElementById('videoInput').click()" class="menu-item">Видео</button>
+            <input type="file" id="audioInput" accept="audio/*" style="display: none"/>
+            <button onclick="document.getElementById('audioInput').click()" class="menu-item">Аудио</button>
+          </div>
+        </div>
+
+        <!-- Сохранить -->
+        <div class="ribbon-item">
+          <button class="ribbon-button btn-save" onclick="toggleMenu('save-menu')">Сохранить</button>
+          <div class="ribbon-menu" id="save-menu">
+            <button onclick="saveToLocalStorage()" class="menu-item">Сохранить</button>
+            <button onclick="saveAs('txt')" class="menu-item">Сохранить как TXT</button>
+            <button onclick="saveAs('html')" class="menu-item">Сохранить как HTML</button>
+          </div>
+        </div>
+
+        <!-- Очистить -->
+        <div class="ribbon-item">
+          <button class="ribbon-button btn-clear" onclick="clearEditor()">Очистить</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Редактор -->
+  <div class="editor-container">
+    <div class="editor-wrapper">
+      <div class="editor-content">
+        <div id="editor" contenteditable="true"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Система вкладок
+    let notes = JSON.parse(localStorage.getItem('notes')) || [];
+    let currentNoteId = null;
+    let isResizing = false;
+    let currentTable = null;
+    let startX, startY, startWidth, startHeight;
+
+    function initTabs() {
+      if (notes.length === 0) {
+        newNote();
+      } else {
+        currentNoteId = notes[0].id;
+        editor.innerHTML = notes[0].content;
+      }
+      renderTabs();
+      initTableResize();
+    }
+
+    function newNote() {
+      const noteId = Date.now().toString();
+      notes.push({
+        id: noteId,
+        content: '',
+        title: `Вкладка ${notes.length + 1}`
+      });
+      currentNoteId = noteId;
+      editor.innerHTML = '';
+      saveNotes();
+      renderTabs();
+    }
+
+    function renameCurrentTab() {
+      const note = notes.find(n => n.id === currentNoteId);
+      const newTitle = prompt('Новое название:', note.title);
+      if (newTitle) {
+        note.title = newTitle;
+        saveNotes();
+        renderTabs();
+      }
+    }
+
+    function deleteCurrentTab() {
+      if (notes.length <= 1) {
+        alert('Должна остаться хотя бы одна вкладка');
+        return;
+      }
+      
+      if (confirm('Удалить текущую вкладку?')) {
+        const index = notes.findIndex(n => n.id === currentNoteId);
+        notes.splice(index, 1);
+        currentNoteId = notes[Math.max(index-1, 0)].id;
+        editor.innerHTML = notes.find(n => n.id === currentNoteId).content;
+        saveNotes();
+        renderTabs();
+      }
+    }
+
+    function renderTabs() {
+      const tabsContainer = document.getElementById('tabs');
+      tabsContainer.innerHTML = notes.map(note => `
+        <div class="tab ${note.id === currentNoteId ? 'active' : ''}" 
+             onclick="switchNote('${note.id}')">
+          ${note.title}
+          <div class="tab-close" onclick="deleteTab('${note.id}', event)">×</div>
+        </div>
+      `).join('');
+    }
+
+    function switchNote(noteId) {
+      currentNoteId = noteId;
+      editor.innerHTML = notes.find(n => n.id === noteId).content;
+      renderTabs();
+      initTableResize();
+    }
+
+    function autoSave() {
+      const note = notes.find(n => n.id === currentNoteId);
+      if (note) note.content = editor.innerHTML;
+      saveNotes();
+    }
+
+    function saveNotes() {
+      localStorage.setItem('notes', JSON.stringify(notes));
+    }
+
+    // Функции редактора
+    const editor = document.getElementById('editor');
+
+    function formatText(command, value) {
+      document.execCommand(command, false, value);
+    }
+
+    function insertTable() {
+      const rows = prompt('Количество строк:', 2);
+      const cols = prompt('Количество столбцов:', 2);
+      if (rows && cols) {
+        const table = document.createElement('table');
+        const resizeHandle = document.createElement('div');
+        resizeHandle.className = 'resize-handle';
+        
+        let html = '';
+        for (let i = 0; i < rows; i++) {
+          html += '<tr>';
+          for (let j = 0; j < cols; j++) {
+            html += `<td contenteditable>Ячейка ${i+1}-${j+1}</td>`;
+          }
+          html += '</tr>';
+        }
+        table.innerHTML = html;
+        table.appendChild(resizeHandle);
+        document.execCommand('insertHTML', false, table.outerHTML);
+        initTableResize();
+      }
+    }
+
+    function initTableResize() {
+      document.querySelectorAll('.resize-handle').forEach(handle => {
+        handle.addEventListener('mousedown', startResize);
+      });
+    }
+
+    function startResize(e) {
+      isResizing = true;
+      currentTable = e.target.closest('table');
+      startX = e.clientX;
+      startY = e.clientY;
+      startWidth = currentTable.offsetWidth;
+      startHeight = currentTable.offsetHeight;
+      
+      document.addEventListener('mousemove', resize);
+      document.addEventListener('mouseup', stopResize);
+    }
+
+    function resize(e) {
+      if (!isResizing) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      currentTable.style.width = startWidth + dx + 'px';
+      currentTable.style.height = startHeight + dy + 'px';
+    }
+
+    function stopResize() {
+      isResizing = false;
+      document.removeEventListener('mousemove', resize);
+      document.removeEventListener('mouseup', stopResize);
+      autoSave();
+    }
+
+    function tableAction(action) {
+      const selection = window.getSelection();
+      const cell = selection.anchorNode.parentElement.closest('td, th');
+      
+      if (!cell) return alert('Выберите ячейку');
+      
+      const row = cell.parentElement;
+      const table = row.parentElement;
+
+      switch(action) {
+        case 'addRow':
+          const newRow = row.cloneNode(true);
+          newRow.querySelectorAll('td').forEach(td => td.innerHTML = '');
+          table.insertBefore(newRow, row.nextSibling);
+          break;
+          
+        case 'addColumn':
+          table.querySelectorAll('tr').forEach(tr => {
+            const newCell = tr.children[0].cloneNode(true);
+            newCell.innerHTML = '';
+            tr.appendChild(newCell);
+          });
+          break;
+          
+        case 'deleteRow':
+          if (table.rows.length > 1) row.remove();
+          break;
+          
+        case 'deleteColumn':
+          const index = Array.from(row.children).indexOf(cell);
+          table.querySelectorAll('tr').forEach(tr => tr.children[index].remove());
+          break;
+      }
+      autoSave();
+    }
+
+    function mergeCells() {
+      document.execCommand('mergeCells');
+      autoSave();
+    }
+
+    function insertLink() {
+      const url = prompt('Введите URL:');
+      if (url) document.execCommand('createLink', false, url);
+      autoSave();
+    }
+
+    function editLink() {
+      const link = document.getSelection().anchorNode.parentElement.closest('a');
+      if (link) {
+        const newUrl = prompt('Новый URL:', link.href);
+        if (newUrl) link.href = newUrl;
+        autoSave();
+      }
+    }
+
+    function removeLink() {
+      document.execCommand('unlink');
+      autoSave();
+    }
+
+    function saveToLocalStorage() {
+      autoSave();
+      alert('Сохранено в LocalStorage');
+    }
+
+    function saveAs(type) {
+      const content = editor.innerHTML;
+      const blob = new Blob([type === 'html' ? content : editor.innerText], 
+        {type: type === 'html' ? 'text/html' : 'text/plain'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `document.${type}`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function clearEditor() {
+      editor.innerHTML = '';
+      autoSave();
+    }
+
+    // Обработчики файлов
+    document.getElementById('imageInput').onchange = function(e) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onload = function() {
+        const img = document.createElement('img');
+        img.src = reader.result;
+        document.execCommand('insertHTML', false, img.outerHTML);
+        autoSave();
+      };
+      reader.readAsDataURL(file);
+    };
+
+    // Управление меню
+    function toggleMenu(menuId) {
+      const menu = document.getElementById(menuId);
+      const allMenus = document.querySelectorAll('.ribbon-menu');
+      allMenus.forEach(m => {
+        if (m.id !== menuId) m.classList.remove('show');
+      });
+      menu.classList.toggle('show');
+    }
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.ribbon-item')) {
+        document.querySelectorAll('.ribbon-menu').forEach(m => m.classList.remove('show'));
+      }
+    });
+
+    // Инициализация
+    window.addEventListener('load', () => {
+      initTabs();
+      setInterval(autoSave, 5000);
+    });
+// Register Service Worker
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js')
+      .then(registration => {
+        console.log('ServiceWorker registration successful');
+      })
+      .catch(err => {
+        console.log('ServiceWorker registration failed: ', err);
+      });
+  });
+}
+
+// Show install prompt for PWA
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+  // Prevent the mini-infobar from appearing on mobile
+  e.preventDefault();
+  // Stash the event so it can be triggered later
+  deferredPrompt = e;
+  // Show install button (you need to add this button to your UI)
+  document.getElementById('installButton').style.display = 'block';
+});
+
+// Install button click handler
+document.getElementById('installButton').addEventListener('click', () => {
+  // Hide the install button
+  document.getElementById('installButton').style.display = 'none';
+  // Show the install prompt
+  deferredPrompt.prompt();
+  // Wait for the user to respond to the prompt
+  deferredPrompt.userChoice.then((choiceResult) => {
+    if (choiceResult.outcome === 'accepted') {
+      console.log('User accepted the install prompt');
+    } else {
+      console.log('User dismissed the install prompt');
+    }
+    deferredPrompt = null;
+  });
+});
+  </script>
+</body>
+</html>
